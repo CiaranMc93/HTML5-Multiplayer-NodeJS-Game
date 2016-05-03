@@ -1,0 +1,21 @@
+{
+  "name": "package",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CiaranMc93/HTML5-Multiplayer-NodeJS-Game.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CiaranMc93/HTML5-Multiplayer-NodeJS-Game/issues"
+  },
+  "homepage": "https://github.com/CiaranMc93/HTML5-Multiplayer-NodeJS-Game#readme"
+}
