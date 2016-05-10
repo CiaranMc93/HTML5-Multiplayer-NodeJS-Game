@@ -19,66 +19,147 @@ console.log('Server Started');
 
 //create a list of sockets and assign unique ID to each
 var SOCKET_LIST = {};
-var PLAYER_LIST = {};
 
-var Player = function(id) {
+//shared template
+var Entity = function() {
 	var self = {
 		x:250,
 		y:250,
-		id:id,
-		number:"" + Math.floor(10 * Math.random()),
-		moveRight:false,
-		moveLeft:false,
-		moveUp:false,
-		moveDown:false,
-		maxSpd:10,
+		spdX:0,
+		spdY:0,
+		id:"",
 	}
 
-	self.updateEntityPosition = function(){
-		//move the player appropriately
-		if(self.moveRight)
-		{
-			self.x += self.maxSpd;
-		}
-		if(self.moveLeft)
-		{
-			self.x -= self.maxSpd;
-		}
-		if(self.moveDown)
-		{
-			self.y += self.maxSpd;
-		}
-		if(self.moveUp)
-		{
-			self.y -= self.maxSpd;
-		}
+	//common functions
+	self.update = function()
+	{
+		self.updateEntityPosition();
 	}
 
+	self.updateEntityPosition = function()
+	{
+		self.x += self.spdX;
+		self.y += self.spdY;
+	}
 
 	return self;
 }
-//socket.io
-//loads and init the file and returns an object
-var io = require('socket.io')(serv,{});
 
+var Player = function(id) {
 
-io.sockets.on('connection', function(socket){
-	//add identifiers for each player
-	socket.id = Math.random();
+	var self = Entity();
+	//player values
+	self.id = id;
+	self.number = Math.floor(10 * Math.random());
+	self.moveRight = false;
+	self.moveLeft = false;
+	self.moveUp = false;
+	self.moveDown = false;
+	self.maxSpd = 10;
 
+	var super_update = self.update;
+	self.update = function()
+	{
+		self.updateSpd();
+		super_update();
+	}
+
+	self.updateSpd = function(){
+		//move the player appropriately
+		if(self.moveRight)
+		{
+			self.spdX = self.maxSpd;
+		}
+		else if(self.moveLeft)
+		{
+			self.spdX = -self.maxSpd;
+		}
+		else
+		{
+			self.spdX = 0;
+		}
+
+		if(self.moveDown)
+		{
+			self.spdY = self.maxSpd;
+		}
+		else if(self.moveUp)
+		{
+			self.spdY = -self.maxSpd;
+		}
+		else
+		{
+			self.spdY = 0;
+		}
+	}
+
+	//add the player to the list
+	Player.list[id] = self;
+
+	return self;
+}
+//player list
+Player.list = {};
+
+//bullet entity
+var Bullet = function(angle)
+{
+	var self = Entity();
+	self.id = Math.random();
+	self.spdX = Math.cos(angle/180*Math.PI) * 10;
+	self.spdY = Math.sin(angle/180*Math.PI) * 10;
+
+	self.timer = 0;
+	self.toRemove = false;
+	var super_update = self.update;
+	self.update = function()
+	{
+		if(self.timer++ > 10)
+		{
+			self.toRemove = true;
+		}
+
+		super_update();
+	}
+
+	Bullet.list[self.id] = self;
+
+	return self;
+}
+
+//Bullet Update
+Bullet.update = function()
+{
+
+	//create a bullet at a random angle
+	if(Math.random() < 0.1)
+	{
+		Bullet(Math.random()*360);
+	}
+
+	var pack = [];
+
+	for(var i in Bullet.list)
+	{
+		var bullet = Bullet.list[i];
+		//update the players position
+		bullet.update();
+
+		pack.push({
+			x:bullet.x,
+			y:bullet.y,
+		});
+	}
+
+	return pack;
+}
+
+Bullet.list = {};
+
+//on connect static function
+Player.onConnect = function(socket)
+{
 	var player = Player(socket.id);
-	
-	//add to the socket list
-	SOCKET_LIST[socket.id] = socket;
-	//add player to player list
-	PLAYER_LIST[socket.id] = player;
-
-	//when there is a disconnect
-	socket.on('disconnect', function() {
-		delete SOCKET_LIST[socket.id];
-		delete PLAYER_LIST[socket.id];
-	});
-
 	//when there is movement change
 	socket.on('keyPress', function(data) {
 		//check if the data sent back is the direction and chnage the state accordingly
@@ -91,26 +172,67 @@ io.sockets.on('connection', function(socket){
 		else if(data.inputId === 'down')
 			player.moveDown = data.state;
 	});
+}
+
+//disconnect static function
+Player.onDisconnect = function(socket)
+{
+	//delete player from list
+	delete Player.list[socket.id];
+}
+
+//socket.io
+//loads and init the file and returns an object
+var io = require('socket.io')(serv,{});
+
+//when a player connects
+io.sockets.on('connection', function(socket){
+	//add identifiers for each player
+	socket.id = Math.random();
+
+	Player.onConnect(socket)
+	
+	//add to the socket list
+	SOCKET_LIST[socket.id] = socket;
+
+	//when there is a disconnect
+	socket.on('disconnect', function() {
+		delete SOCKET_LIST[socket.id];
+		Player.onDisconnect(socket);
+	});
 });
 
-//loop through socket list
-setInterval(function()
+Player.update = function()
 {
 	var pack = [];
 
-	for(var i in PLAYER_LIST)
+	for(var i in Player.list)
 	{
-		var player = PLAYER_LIST[i];
+		var player = Player.list[i];
 		//update the players position
-		player.updateEntityPosition();
+		player.update();
 
 		pack.push({
 			x:player.x,
 			y:player.y,
 			number:player.number
 		});
-		
 	}
+
+	return pack;
+}
+
+//loop through socket list
+//main game loop
+setInterval(function()
+{
+	var pack = {
+		player:Player.update(),
+		bullet:Bullet.update(),
+	}
+	//gets the package from the function
+	var pack = Player.update();
+
 	//for each player, send the package
 	for(var i in SOCKET_LIST)
 	{

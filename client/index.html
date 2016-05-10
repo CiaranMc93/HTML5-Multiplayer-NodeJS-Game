@@ -12,13 +12,18 @@
 	socket.on('New Position', function(data){
 		//draw the rectangle
 		ctx.clearRect(0,0,500,500);
-		//draw P for each player
-		for(var i = 0; i < data.length; i++)
-		{
-			ctx.fillText(data[i].number, data[i].x, data[i].y);
-		}
-		
 
+		//draw P for each player
+		for(var i = 0; i < data.player; i++)
+		{
+			ctx.fillText(data.player[i].number, data.player[i].x, data.player[i].y);
+		}
+
+		//loop through each bullet and draw a rectangle
+		for(var i = 0; i < data.bullet.length; i++)
+		{
+			ctx.fillRect(data.bullet[i].x-5, data.bullet[i].y-5, 10,10);
+		}
 	});
 
 	document.onkeydown = function(event)
