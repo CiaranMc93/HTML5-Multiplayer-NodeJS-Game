@@ -230,8 +230,7 @@ setInterval(function()
 		player:Player.update(),
 		bullet:Bullet.update(),
 	}
-	//gets the package from the function
-	var pack = Player.update();
+
 
 	//for each player, send the package
 	for(var i in SOCKET_LIST)

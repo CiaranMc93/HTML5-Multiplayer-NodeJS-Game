@@ -13,8 +13,10 @@
 		//draw the rectangle
 		ctx.clearRect(0,0,500,500);
 
+		console.log(data.player);
+
 		//draw P for each player
-		for(var i = 0; i < data.player; i++)
+		for(var i = 0; i < data.player.length; i++)
 		{
 			ctx.fillText(data.player[i].number, data.player[i].x, data.player[i].y);
 		}
