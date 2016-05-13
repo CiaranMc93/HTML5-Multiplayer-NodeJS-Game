@@ -200,6 +200,13 @@ io.sockets.on('connection', function(socket){
 		delete SOCKET_LIST[socket.id];
 		Player.onDisconnect(socket);
 	});
+
+	//when there is a message sent
+	socket.on('SendToServer', function(data) {
+		var playerName = ("" + socket.id).slice(2,7);
+		delete SOCKET_LIST[socket.id];
+		Player.onDisconnect(socket);
+	});
 });
 
 Player.update = function()

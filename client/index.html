@@ -1,7 +1,21 @@
-<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;">
+<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
+
+<div id="chat-text" style="width:500px;height:100px;overflow-y:scroll">
+	<div>
+		Hello!
+	</div>
+</div>
+
+<form id="chat-form">
+	<input id="chat-input" type="text" style="width:500px" name="input"></input>
+</form>
 
 <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
 <script>
+	//add html elements to JS
+	var chatText = document.getElementById('chat-text');
+	var chatInput = document.getElementById('chat-input');
+	var chatForm = document.getElementById('chat-form');
 
 	var ctx = document.getElementById("ctx").getContext("2d");
 	ctx.font = '30px Arial';
@@ -27,6 +41,20 @@
 			ctx.fillRect(data.bullet[i].x-5, data.bullet[i].y-5, 10,10);
 		}
 	});
+
+	//create socket for the data
+	socket.on('Chat', function(data){
+		chatText.innerHTML += '<div>' + data + '</div>';
+	});
+
+	//submit the form
+	chatForm.onsubmit = function(e){
+		e.preventDefault();
+		//send the value typed
+		socket.emit('SendToServer',chatInput.value);
+		//reset the chat value
+		chatInput.value = "";
+	}
 
 	document.onkeydown = function(event)
 	{
