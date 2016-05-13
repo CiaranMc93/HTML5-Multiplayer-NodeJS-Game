@@ -42,6 +42,12 @@ var Entity = function() {
 		self.y += self.spdY;
 	}
 
+	self.getDistance = function(point)
+	{
+		//return square root of the point and player
+		return Math.sqrt(Math.pow(self.x-point.x,2) + Math.pow(self.y-point.y,2));
+	}
+
 	return self;
 }
 
@@ -55,6 +61,8 @@ var Player = function(id) {
 	self.moveLeft = false;
 	self.moveUp = false;
 	self.moveDown = false;
+	self.attack = false;
+	self.mouseAngle = 0;
 	self.maxSpd = 10;
 
 	var super_update = self.update;
@@ -62,6 +70,21 @@ var Player = function(id) {
 	{
 		self.updateSpd();
 		super_update();
+
+		//bullets
+		//create a bullet at a random angle
+		//shoot on mouse click
+		if(self.attack)
+		{
+			//shoot bullet at mouse direction angle
+			self.shootBullet(self.mouseAngle);
+		}
+	}
+
+	self.shootBullet = function(angle) {
+		var b = Bullet(self.id,angle);
+		b.x = self.x;
+		b.y = self.y;
 	}
 
 	self.updateSpd = function(){
@@ -102,24 +125,39 @@ var Player = function(id) {
 Player.list = {};
 
 //bullet entity
-var Bullet = function(angle)
+var Bullet = function(parent,angle)
 {
 	var self = Entity();
 	self.id = Math.random();
 	self.spdX = Math.cos(angle/180*Math.PI) * 10;
 	self.spdY = Math.sin(angle/180*Math.PI) * 10;
-
+	//parent bullets cant touch parent
+	self.parent = parent;
 	self.timer = 0;
 	self.toRemove = false;
 	var super_update = self.update;
+
 	self.update = function()
 	{
-		if(self.timer++ > 10)
+		if(self.timer++ > 50)
 		{
 			self.toRemove = true;
 		}
 
 		super_update();
+
+		//loop through every player
+		for(var i in Player.list)
+		{
+			//get the player
+			var p = Player.list[i];
+
+			//if distance is 
+			if(self.getDistance(p) < 32 && self.parent !== p.id){
+				//handle collision
+				self.toRemove = true;
+			}
+		}
 	}
 
 	Bullet.list[self.id] = self;
@@ -130,13 +168,6 @@ var Bullet = function(angle)
 //Bullet Update
 Bullet.update = function()
 {
-
-	//create a bullet at a random angle
-	if(Math.random() < 0.1)
-	{
-		Bullet(Math.random()*360);
-	}
-
 	var pack = [];
 
 	for(var i in Bullet.list)
@@ -144,6 +175,12 @@ Bullet.update = function()
 		var bullet = Bullet.list[i];
 		//update the players position
 		bullet.update();
+
+		//remove bullet
+		if(bullet.toRemove)
+		{
+			delete Bullet.list[i];
+		}
 
 		pack.push({
 			x:bullet.x,
@@ -171,6 +208,10 @@ Player.onConnect = function(socket)
 			player.moveUp = data.state;
 		else if(data.inputId === 'down')
 			player.moveDown = data.state;
+		else if(data.inputId === 'attack')
+			player.attack = data.state;
+		else if(data.inputId === 'mouseAngle')
+			player.mouseAngle = data.state;
 	});
 }
 
@@ -184,6 +225,8 @@ Player.onDisconnect = function(socket)
 //socket.io
 //loads and init the file and returns an object
 var io = require('socket.io')(serv,{});
+//allow admin debug
+var DEBUG = true;
 
 //when a player connects
 io.sockets.on('connection', function(socket){
@@ -203,9 +246,22 @@ io.sockets.on('connection', function(socket){
 
 	//when there is a message sent
 	socket.on('SendToServer', function(data) {
+		//player name is their ID
 		var playerName = ("" + socket.id).slice(2,7);
-		delete SOCKET_LIST[socket.id];
-		Player.onDisconnect(socket);
+		
+		//loop through each player and emit the data for any player who chats
+		for(var i in SOCKET_LIST)
+		{
+			SOCKET_LIST[i].emit('addToChat', playerName + ': ' + data);
+		}
+	});
+
+	//if the player submits a message with a '/' we will eval the data
+	socket.on('evalServer', function(data) {
+
+		//evaluate the data
+		var res = eval(data);
+		socket.emit('evalAnswer', res);
 	});
 });
 
