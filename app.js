@@ -222,6 +222,28 @@ Player.onDisconnect = function(socket)
 	delete Player.list[socket.id];
 }
 
+var USERS = {
+	//list of users and passwords
+	//username:password
+	"ciaran":"123",
+	"ciaran123":"123",
+	"ciaranASD":"123",
+}
+
+var isValidUser = function(data){
+	return USERS[data.username] === data.password;
+}
+
+var isUsernameTaken = function(data){
+	//return true if username is taken
+	return USERS[data.username];
+}
+
+var addUsername = function(data){
+	//add the user
+	USERS[data.username] = data.password;
+}
+
 //socket.io
 //loads and init the file and returns an object
 var io = require('socket.io')(serv,{});
@@ -233,7 +255,40 @@ io.sockets.on('connection', function(socket){
 	//add identifiers for each player
 	socket.id = Math.random();
 
-	Player.onConnect(socket)
+	//create a player on sign-in success
+	socket.on('signIn',function(data)
+	{
+		if(isValidUser(data))
+		{
+			//create a player
+			Player.onConnect(socket);
+			//send success to client
+			socket.emit('signInResponse', {success:true});
+		}
+		else
+		{
+			socket.emit('signInResponse', {success:false});
+		}
+		
+	});
+
+	//sign-up success
+	socket.on('signUp',function(data)
+	{
+		if(isUsernameTaken(data))
+		{
+			//send success to client
+			socket.emit('signUpResponse', {success:false});
+		}
+		else
+		{
+			//send package to function with username/password
+			addUsername(data);
+			socket.emit('signUpResponse', {success:true});
+		}
+		
+	});
+	
 	
 	//add to the socket list
 	SOCKET_LIST[socket.id] = socket;

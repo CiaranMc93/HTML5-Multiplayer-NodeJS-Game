@@ -1,17 +1,83 @@
-<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
-
-<div id="chat-text" style="width:500px;height:100px;overflow-y:scroll">
-	<div>
-		Hello!
-	</div>
+<!-- create a container for the login -->
+<div id="signDiv">
+	Username: <input id="username" type="text" name="signin"><br>
+	Password: <input id="password" type="password" name="password"><br>
+	<button id="signInButton">Sign In</button>
+	<button id="signUpButton">Sign Up</button>
 </div>
 
-<form id="chat-form">
-	<input id="chat-input" type="text" style="width:500px" name="input"></input>
-</form>
+<!-- Container for the game itself -->
+<div id="gameDiv" style="display:none">
+	<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
+
+	<div id="chat-text" style="width:500px;height:100px;overflow-y:scroll">
+		<div>
+			Hello!
+		</div>
+	</div>
+
+	<form id="chat-form">
+		<input id="chat-input" type="text" style="width:500px" name="input"></input>
+	</form>
+</div>
+
 
 <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
 <script>
+	//init a web socket connections between client and server
+	//client can emit to server and vice versa
+	var socket = io();
+
+	//sign in/up logic
+	//get all element information
+	var signDiv = document.getElementById('signDiv');
+	var username = document.getElementById('username');
+	var password = document.getElementById('password');
+	var signInButton = document.getElementById('signInButton');
+	var signUpButton = document.getElementById('signUpButton');
+	var gameDiv = document.getElementById('gameDiv');
+
+	//emit a package to the server with the information relating to the user
+	signInButton.onclick = function()
+	{
+		socket.emit('signIn',{username:username.value, password:password.value});
+	}
+
+	signUpButton.onclick = function()
+	{
+		socket.emit('signUp',{username:username.value, password:password.value});
+	}
+
+
+	//receive and handle response from the server
+	socket.on('signInResponse', function(data)
+	{
+		//if successful, play the game
+		if(data.success)
+		{
+			signDiv.style.display = 'none';
+			gameDiv.style.display = 'inline-block';
+		}
+		else
+		{
+			alert("Incorrect Sign-In");
+		}
+	});
+
+	socket.on('signUpResponse', function(data)
+	{
+		//if successful, play the game
+		if(data.success)
+		{
+			alert("Sign-Up Successful");
+		}
+		else
+		{
+			alert("Incorrect Sign-Up");
+		}
+	});
+
+
 	//add html elements to JS
 	var chatText = document.getElementById('chat-text');
 	var chatInput = document.getElementById('chat-input');
@@ -19,9 +85,6 @@
 
 	var ctx = document.getElementById("ctx").getContext("2d");
 	ctx.font = '30px Arial';
-	//init a web socket connections between client and server
-	//client can emit to server and vice versa
-	var socket = io();
 
 	socket.on('New Position', function(data){
 		//draw the rectangle
