@@ -1,6 +1,11 @@
 //file communication using express
 //package communication using socket.io
 
+var mongojs = require('mongojs');
+//listen to the correct port address and bring in the collection you want/need
+var db = mongojs('localhost:27017.myGame', ['account','progress']);
+
+
 var express = require('express');
 var app = express();
 var serv = require('http').Server(app);
@@ -222,26 +227,43 @@ Player.onDisconnect = function(socket)
 	delete Player.list[socket.id];
 }
 
-var USERS = {
-	//list of users and passwords
-	//username:password
-	"ciaran":"123",
-	"ciaran123":"123",
-	"ciaranASD":"123",
+var isValidUser = function(data,cb){
+	db.account.find({username:data.username,password:data.password}, function(err,res){
+		//cb = callback
+		//if res has a value
+		if(res[0])
+		{
+			cb(true);
+		}
+		else
+		{
+			cb(false);
+		}
+	});
 }
 
-var isValidUser = function(data){
-	return USERS[data.username] === data.password;
-}
-
-var isUsernameTaken = function(data){
+var isUsernameTaken = function(data,cb){
 	//return true if username is taken
-	return USERS[data.username];
+	db.account.find({username:data.username}, function(err,res){
+		//cb = callback
+		//if res has a value
+		if(res[0])
+		{
+			cb(true);
+		}
+		else
+		{
+			cb(false);
+		}
+	});
 }
 
-var addUsername = function(data){
+var addUsername = function(data,cb){
 	//add the user
-	USERS[data.username] = data.password;
+	db.account.insert({username:data.username,password:data.password}, function(err){
+		//cb = callback
+		cb();
+	});
 }
 
 //socket.io
@@ -258,34 +280,40 @@ io.sockets.on('connection', function(socket){
 	//create a player on sign-in success
 	socket.on('signIn',function(data)
 	{
-		if(isValidUser(data))
+		//check if there is a valid user
+		isValidUser(data, function(res)
 		{
-			//create a player
-			Player.onConnect(socket);
-			//send success to client
-			socket.emit('signInResponse', {success:true});
-		}
-		else
-		{
-			socket.emit('signInResponse', {success:false});
-		}
-		
+			if(res)
+			{
+				//create a player
+				Player.onConnect(socket);
+				//send success to client
+				socket.emit('signInResponse', {success:true});
+
+			} 
+			else
+			{
+				socket.emit('signInResponse', {success:false});
+			}
+		});
 	});
 
 	//sign-up success
 	socket.on('signUp',function(data)
 	{
-		if(isUsernameTaken(data))
-		{
-			//send success to client
-			socket.emit('signUpResponse', {success:false});
-		}
-		else
-		{
-			//send package to function with username/password
-			addUsername(data);
-			socket.emit('signUpResponse', {success:true});
-		}
+		//check if there is a username already taken
+		isUsernameTaken(data, function(res){
+			if(res)
+			{
+				//send success to client
+				socket.emit('signUpResponse', {success:false});
+			} else
+			{
+				addUsername(data, function(){
+					socket.emit('signUpResponse', {success:true});
+				});
+			}
+		});
 		
 	});
 	
