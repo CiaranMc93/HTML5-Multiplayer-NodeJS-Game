@@ -3,7 +3,7 @@
 
 var mongojs = require('mongojs');
 //listen to the correct port address and bring in the collection you want/need
-var db = mongojs('localhost:27017.myGame', ['account','progress']);
+var db = mongojs('localhost:27017/myGame', ['account','progress']);
 
 
 var express = require('express');
